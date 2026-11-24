@@ -1,0 +1,38 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}
+body {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+.site-header,
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 0;
+}
+.site-header nav {
+  display: flex;
+  gap: 1rem;
+}
+a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+img {
+  max-width: 100%;
+  height: auto;
+}
+pre,
+table {
+  display: block;
+  overflow-x: auto;
+}
+.byline,
+.article-list p {
+  color: GrayText;
+}
