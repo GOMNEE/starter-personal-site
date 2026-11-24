@@ -61,3 +61,7 @@ https://gomnee.com
 
 Check your live site with Gomnee's free AI site audit:
 https://app.gomnee.com/audit
+
+## License
+
+MIT. Use it for any site you like.
