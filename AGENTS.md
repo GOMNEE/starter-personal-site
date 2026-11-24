@@ -12,6 +12,12 @@ from this repository and publishes approved Articles to it. Keep it that way.
 - **Articles** are Markdown files in `content/articles/`, read only through
   `lib/articles.ts`. A published article's file name is its address: never
   rename it.
+- **Article fields** follow Gomnee's Article document
+  (https://gomnee.com/schemas/gomnee-article-v2.json): `title`, `summary`,
+  `published` and `authors` are required; `updated`, `reviewer`, `cover`,
+  `categories`, `tags`, `search`, `faq`, `sources` and `verification` are
+  optional. `components/article-page.tsx` renders every part only when an
+  article has it. Keep new fields named as in that document.
 - **Markdown** renders with `react-markdown` and `skipHtml`. Never inject raw
   HTML.
 - **Structured data:** WebSite and Person on the home page, one BlogPosting

@@ -27,13 +27,36 @@ from the first commit.
 Building with a coding agent? It reads `AGENTS.md`. For the full guidance,
 give it the skill: https://gomnee.com/.well-known/agent-skills/gomnee-ready-site/SKILL.md
 
+## Writing articles
+
+Each article is a Markdown file in `content/articles/`; its file name is its
+address. The front matter uses the names of Gomnee's Article document, so the
+same page will show articles Gomnee publishes later:
+
+| Field | Required | Shows as |
+| --- | --- | --- |
+| `title`, `summary` | yes | The heading and the line under it |
+| `published`, `updated` | `published` | The dates, here and in search results |
+| `authors`, `reviewer` | `authors` | The byline, and an author box when they have a description |
+| `categories`, `tags` | no | The category chip, related articles, keywords |
+| `cover` | no | The cover image, with alt text, caption and credit |
+| `faq` | no | Questions at the end, with FAQ structured data |
+| `sources` | no | A numbered list of sources |
+| `verification` | no | "Tested first-hand" or "Based on documentation", with a note |
+| `search` | no | A different title or description for search results |
+
+`content/articles/hello-world.md` shows every field.
+
 ## What's inside
 
 - Pages: home, about, the blog, each article, privacy and a real 404.
 - On every page: title, description, one canonical address, Open Graph and a
   share image.
-- Structured data: WebSite and Person on the home page, one BlogPosting per
-  article.
+- Article pages laid out like the ones Gomnee publishes to: breadcrumbs,
+  category and reading time, byline and dates, contents, questions, sources
+  and author box, each only when the article has it.
+- Structured data: WebSite and Person on the home page; BlogPosting,
+  BreadcrumbList and, with questions, FAQPage on each article.
 - `sitemap.xml`, `robots.txt` and `llms.txt`.
 - Articles as Markdown files, read through one module, `lib/articles.ts`.
 - Nothing to run besides the site: no database, no environment variables.

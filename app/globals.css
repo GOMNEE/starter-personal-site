@@ -36,3 +36,117 @@ table {
 .article-list p {
   color: GrayText;
 }
+
+/* ---------- articles ---------- */
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin: 0.5rem 0 1.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: GrayText;
+}
+.crumbs li + li::before {
+  content: "›";
+  margin-right: 0.5rem;
+}
+.article header h1 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: GrayText;
+}
+.chip {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+.deck {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+.byline {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 0 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 0.925rem;
+}
+.byline p {
+  margin: 0;
+}
+.pill {
+  justify-self: start;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.cover {
+  margin: 1.5rem 0;
+}
+.cover figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: GrayText;
+}
+.contents {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 6px;
+}
+.contents p {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+.contents ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+.body h2,
+.faq h2,
+.checked h2,
+.sources h2,
+.people h2 {
+  margin-top: 2.5rem;
+  scroll-margin-top: 1rem;
+}
+.faq h3 {
+  margin-bottom: 0.25rem;
+  font-size: 1.05rem;
+}
+.people p {
+  margin: 0.5rem 0;
+}
+.related {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.related li {
+  margin: 0.75rem 0;
+}
+.related p {
+  margin: 0.25rem 0 0;
+  color: GrayText;
+}

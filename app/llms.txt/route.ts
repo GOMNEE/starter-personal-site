@@ -17,7 +17,7 @@ export function GET() {
     `- [About](${absoluteUrl("/about")}): who writes this site`,
     `- [Blog](${absoluteUrl("/blog")}): every article, newest first`,
     ...(articles.length
-      ? ["", "## Articles", "", ...articles.map((article) => `- [${article.title}](${absoluteUrl(`/blog/${article.slug}`)}): ${article.description}`)]
+      ? ["", "## Articles", "", ...articles.map((article) => `- [${article.title}](${absoluteUrl(`/blog/${article.slug}`)}): ${article.summary}`)]
       : []),
     "",
   ].join("\n");

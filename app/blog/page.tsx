@@ -17,7 +17,7 @@ export default function BlogIndex() {
         {listArticles().map((article) => (
           <li key={article.slug}>
             <Link href={`/blog/${article.slug}`}>{article.title}</Link>
-            <p>{article.description}</p>
+            <p>{article.summary}</p>
             <DateText iso={article.published} />
           </li>
         ))}

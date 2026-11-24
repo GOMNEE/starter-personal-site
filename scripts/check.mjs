@@ -69,10 +69,20 @@ for (const path of pages) {
     }
   }
   if (!data.length) fail(path, "no structured data");
+  const description = meta(head, "name", "description") ?? "";
+  if (description.length > 160) warnings.push(`${path}: the meta description runs past 160 characters`);
   if (path.startsWith("/blog/")) {
     const posts = data.filter((item) => item["@type"] === "BlogPosting");
     if (posts.length !== 1) fail(path, `${posts.length} BlogPosting blocks, not one`);
     else if (!posts[0].datePublished) fail(path, "BlogPosting has no datePublished");
+    if (data.filter((item) => item["@type"] === "BreadcrumbList").length !== 1)
+      fail(path, "no BreadcrumbList for its breadcrumbs");
+    const visible = html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+    for (const faq of data.filter((item) => item["@type"] === "FAQPage"))
+      for (const question of faq.mainEntity ?? [])
+        if (!visible.includes(question.name)) fail(path, `FAQ question not shown on the page: ${question.name}`);
+    for (const alt of all(html, /<figure class="cover"><img[^>]* alt="([^"]*)"/g))
+      if (!alt.trim()) fail(path, "the cover image has no alt text");
   }
 }
 
