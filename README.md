@@ -1,24 +1,30 @@
 # Personal site starter
 
-A personal site with a blog, built to run on [Gomnee](https://gomnee.com):
-Next.js 16, Markdown articles, and what search engines and AI agents look for,
-from the first commit.
+A personal site with a blog that [Gomnee](https://gomnee.com) runs: Next.js 16,
+the publishing API Gomnee sends Articles to, private previews for review, and
+what search engines and AI agents look for, from the first commit.
 
 ## Start
 
 1. Choose **Use this template** on GitHub to create your own repository.
 2. Edit `lib/site.ts`: your address, your name, one sentence about the site,
-   your email.
-3. Replace the text on the home and about pages, and
-   `content/articles/hello-world.md` with your first article.
-4. Run it:
+   your email. Replace the text on the home and about pages.
+3. Create a Postgres database. [Neon](https://neon.tech) is free to start, and
+   on Vercel you can add it from the Marketplace. Copy its connection string.
+4. Create the key Gomnee will publish with:
+
+   ```sh
+   openssl rand -hex 32
+   ```
+
+5. Put both in `.env.local` (see `.env.example`), then run it:
 
    ```sh
    pnpm install
    pnpm dev
    ```
 
-5. Before you publish:
+6. Before you publish:
 
    ```sh
    pnpm build && pnpm check
@@ -27,25 +33,46 @@ from the first commit.
 Building with a coding agent? It reads `AGENTS.md`. For the full guidance,
 give it the skill: https://gomnee.com/.well-known/agent-skills/gomnee-ready-site/SKILL.md
 
-## Writing articles
+## How Articles arrive
 
-Each article is a Markdown file in `content/articles/`; its file name is its
-address. The front matter uses the names of Gomnee's Article document, so the
-same page will show articles Gomnee publishes later:
+You don't write Article files. In Gomnee you plan, draft, review and approve;
+Gomnee then sends the exact approved revision to this site, which stores it in
+your database and serves it at `/blog/{slug}`. Your blog, sitemap and
+`llms.txt` list it at once.
 
-| Field | Required | Shows as |
+| Method | Path | What it does |
 | --- | --- | --- |
-| `title`, `summary` | yes | The heading and the line under it |
-| `published`, `updated` | `published` | The dates, here and in search results |
-| `authors`, `reviewer` | `authors` | The byline, and an author box when they have a description |
-| `categories`, `tags` | no | The category chip, related articles, keywords |
-| `cover` | no | The cover image, with alt text, caption and credit |
-| `faq` | no | Questions at the end, with FAQ structured data |
-| `sources` | no | A numbered list of sources |
-| `verification` | no | "Tested first-hand" or "Based on documentation", with a note |
-| `search` | no | A different title or description for search results |
+| GET | `/api/integrations/gomnee/publishing/v1` | What the site can receive, after a database check |
+| PUT | `/api/integrations/gomnee/publishing/v1/articles/{articleKey}` | Publishes or updates one Article, live |
+| GET | `/api/integrations/gomnee/publishing/v1/articles/{articleKey}` | Reads it back exactly as stored |
+| POST | `/api/integrations/gomnee/publishing/v1/previews` | A private preview for Gomnee's review screen |
 
-`content/articles/hello-world.md` shows every field.
+Every request carries the key from step 4 as `Authorization: Bearer …`.
+
+- **Formats:** Markdown, `gomnee_article_v1` (sections, authors, images,
+  sources) and `gomnee_article_v2`, which adds a procedure, a comparison,
+  questions, how it was checked, categories, tags and a listing-card cover.
+- **Safe to retry:** each delivery carries a unique command and a content
+  digest. A repeated command returns its first receipt; an update against an
+  older version, a changed address or a reused command with other content is
+  refused, and the page doesn't change.
+- **Previews** render with this site's own article page, at a link that
+  expires after 14 minutes, that only `https://app.gomnee.com` can show in a
+  frame, and that is never listed, indexed or measured.
+- **Taking an Article down:** set its `status` to `archived` in the
+  `articles` table. Gomnee never deletes anything here.
+
+## Settings
+
+| Name | Needed | What it is |
+| --- | --- | --- |
+| `DATABASE_URL` | To receive Articles | Your Postgres connection string |
+| `GOMNEE_PUBLISHING_TOKEN` | To receive Articles | The key from step 4 |
+| `GOMNEE_PREVIEW_STAGING_ORIGINS` | No | Extra origins allowed to frame previews; leave empty unless Gomnee asks |
+
+Without them the site still runs, with an empty blog, and `pnpm check` says
+publishing isn't configured. `pnpm build` applies the database migrations in
+`drizzle/` whenever `DATABASE_URL` is set.
 
 ## What's inside
 
@@ -53,25 +80,28 @@ same page will show articles Gomnee publishes later:
 - On every page: title, description, one canonical address, Open Graph and a
   share image.
 - Article pages laid out like the ones Gomnee publishes to: breadcrumbs,
-  category and reading time, byline and dates, contents, questions, sources
-  and author box, each only when the article has it.
+  category and reading time, byline and dates, contents, the opening,
+  sections with their sources, steps, comparison tables, questions, how it was
+  checked and the author box, each only when the Article has it.
 - Structured data: WebSite and Person on the home page; BlogPosting,
   BreadcrumbList and, with questions, FAQPage on each article.
 - `sitemap.xml`, `robots.txt` and `llms.txt`.
-- Articles as Markdown files, read through one module, `lib/articles.ts`.
-- Nothing to run besides the site: no database, no environment variables.
-- `pnpm check` tests the built site the way Gomnee looks at it, and GitHub
-  runs it on every push.
+- Tests against a real Postgres (`pnpm test`), and `pnpm check`, which tests
+  the built site the way Gomnee looks at it. GitHub runs both on every push;
+  against its test database, `pnpm check` also publishes one Article and
+  opens one preview through the site's own API.
 
 ## Run it on Gomnee
 
 1. Connect this repository in Gomnee through its GitHub App, for this
    repository only. It reads your code and never changes it.
-2. Preview an exact commit, and publish it when you're ready.
-3. Point your domain at it with the DNS records Gomnee gives you.
-4. Connect Search Console, read-only, and submit your sitemap.
-5. Agree with Gomnee where your Articles are published. Until then, they're
-   the Markdown files here.
+2. Enter `DATABASE_URL` and `GOMNEE_PUBLISHING_TOKEN` in Gomnee's settings
+   for the site.
+3. Preview an exact commit, and publish it when you're ready.
+4. Point your domain at it with the DNS records Gomnee gives you.
+5. Connect Search Console, read-only, and submit your sitemap.
+6. In Gomnee, open **Integrations → CMS** and paste the same publishing key.
+   Gomnee shows **Connected** once it has checked the site's capabilities.
 
 Gomnee is invite-only, and hosting is switched on for each workspace:
 https://gomnee.com

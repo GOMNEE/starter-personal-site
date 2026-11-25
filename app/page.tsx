@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JsonLd, PERSON_ID, WEBSITE_ID } from "@/components/json-ld";
 import { listArticles } from "@/lib/articles";
+import { articlePath } from "@/lib/publishing/publish";
 import { pageMetadata } from "@/lib/metadata";
 import { SITE, absoluteUrl } from "@/lib/site";
 
@@ -10,9 +11,10 @@ export const metadata = pageMetadata({
   description: SITE.description,
   absoluteTitle: true,
 });
+export const dynamic = "force-dynamic";
 
-export default function HomePage() {
-  const latest = listArticles().slice(0, 3);
+export default async function HomePage() {
+  const latest = (await listArticles()).slice(0, 3);
   return (
     <>
       <JsonLd
@@ -39,14 +41,18 @@ export default function HomePage() {
       {/* Replace this heading and paragraph with what the site is about. */}
       <h1>Notes from the work.</h1>
       <p>{SITE.description}</p>
-      <h2>Latest</h2>
-      <ul>
-        {latest.map((article) => (
-          <li key={article.slug}>
-            <Link href={`/blog/${article.slug}`}>{article.title}</Link>
-          </li>
-        ))}
-      </ul>
+      {latest.length ? (
+        <>
+          <h2>Latest</h2>
+          <ul>
+            {latest.map((article) => (
+              <li key={article.slug}>
+                <Link href={articlePath(article.slug)}>{article.title}</Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <p>
         <a href={`mailto:${SITE.email}`} data-gomnee-cta="contact">
           Email me

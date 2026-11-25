@@ -1,0 +1,4 @@
+# pnpm 11 runs no dependency install scripts unless they are listed here.
+# esbuild (used by drizzle-kit and vitest) works from its platform package.
+allowBuilds:
+  esbuild: false
