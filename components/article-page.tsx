@@ -1,107 +1,150 @@
 import Link from "next/link";
-import Markdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { ReactNode } from "react";
-import { DateText } from "@/components/date";
+import { ArticleBody, VERIFICATION_MODES } from "@/components/article-body";
+import { DateText, dayOf } from "@/components/date";
 import { JsonLd, PERSON_ID } from "@/components/json-ld";
-import { type Article, type Person, headingIds, headingText, relatedArticles } from "@/lib/articles";
+import {
+  articleCategories,
+  articleOutline,
+  articleTags,
+  heroImage,
+  readingMinutes,
+  searchFields,
+} from "@/lib/article-view";
+import type { ArticleSummary } from "@/lib/articles";
+import type { ArticlePayload } from "@/lib/publishing/contract";
+import { articlePath } from "@/lib/publishing/publish";
 import { SITE, absoluteUrl } from "@/lib/site";
 
-/** Markdown only: raw HTML in content is dropped, never injected. */
-function Body({ markdown, ids }: { markdown: string; ids?: readonly string[] }) {
-  let next = 0;
-  const components: Components = ids
-    ? { h2: ({ children }) => <h2 id={ids[next++]}>{children}</h2> }
-    : {};
-  return (
-    <Markdown remarkPlugins={[remarkGfm]} skipHtml components={components}>
-      {markdown}
-    </Markdown>
-  );
+type Person = Readonly<{
+  kind: "person" | "organization";
+  name: string;
+  profileUrl: string | null;
+  description: string | null;
+  /** The site's own person, described once on the home page. */
+  isSite?: boolean;
+}>;
+
+/** Who wrote it. A Markdown Article carries no authors: it is the site owner's. */
+function authorsOf(payload: ArticlePayload): Person[] {
+  if (payload.contentFormat === "markdown")
+    return [{ kind: "person", name: SITE.name, profileUrl: absoluteUrl("/about"), description: null, isSite: true }];
+  return payload.presentation.authors;
 }
 
 function Name({ person }: { person: Person }) {
-  return person.url ? <a href={person.url}>{person.name}</a> : <>{person.name}</>;
+  return person.profileUrl ? <a href={person.profileUrl}>{person.name}</a> : <>{person.name}</>;
 }
 
 function joined(people: readonly Person[]): ReactNode {
   return people.map((person, index) => (
-    <span key={person.name}>
+    <span key={`${index}:${person.name}`}>
       {index > 0 ? (index === people.length - 1 ? " and " : ", ") : null}
       <Name person={person} />
     </span>
   ));
 }
 
-const schemaPerson = (person: Person) => ({
-  "@type": person.kind === "organization" ? "Organization" : "Person",
-  name: person.name,
-  ...(person.url ? { url: person.url } : {}),
-});
+const schemaPerson = (person: Person) =>
+  person.isSite
+    ? { "@type": "Person", "@id": PERSON_ID, name: person.name }
+    : {
+        "@type": person.kind === "organization" ? "Organization" : "Person",
+        name: person.name,
+        ...(person.profileUrl ? { url: person.profileUrl } : {}),
+      };
+
+/** Markdown to the plain words a reader sees, for structured data. */
+const plain = (markdown: string) =>
+  markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`~#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
 /**
- * One Article, laid out like the article pages Gomnee publishes to: the path
- * back, what it is and how long it takes, who wrote and checked it, the
- * contents, the body, questions, sources and the people behind it. Each part
- * appears only when the Article has it.
+ * One Article, laid out like the pages Gomnee publishes to: the way back, what
+ * it is and how long it takes, who wrote and checked it, the contents, the
+ * body, and the people behind it. Each part appears only when the Article has
+ * it. The private preview renders this same page without structured data.
  */
-export function ArticlePage({ article }: { article: Article }) {
-  const url = absoluteUrl(`/blog/${article.slug}`);
-  const [category] = article.categories;
-  const related = relatedArticles(article);
-  const described = [...article.authors, ...(article.reviewer ? [article.reviewer] : [])].filter(
-    (person) => person.description,
-  );
-  const ids = headingIds(
-    article.body
-      .split("\n")
-      .map((line) => line.match(/^##\s+(.+?)\s*#*\s*$/)?.[1])
-      .filter((heading): heading is string => Boolean(heading))
-      .map(headingText),
-  );
+export function ArticlePage({
+  slug,
+  payload,
+  publication,
+  related,
+  status,
+  structuredData = true,
+}: {
+  slug: string;
+  payload: ArticlePayload;
+  /** null for a preview of an Article that isn't published yet. */
+  publication: { publishedAt: string; updatedAt: string } | null;
+  related: readonly ArticleSummary[];
+  /** A line above the title, used by the private preview. */
+  status?: ReactNode;
+  structuredData?: boolean;
+}) {
+  const url = absoluteUrl(articlePath(slug));
+  const outline = articleOutline(payload);
+  const [category] = articleCategories(payload);
+  const tags = articleTags(payload);
+  const authors = authorsOf(payload);
+  const reviewer = payload.contentFormat === "markdown" ? null : payload.presentation.reviewer;
+  const verification = payload.contentFormat === "gomnee_article_v2" ? payload.verification : null;
+  const faq = payload.contentFormat === "gomnee_article_v2" ? payload.faq : [];
+  const hero = heroImage(payload);
+  const described = [...authors, ...(reviewer ? [reviewer] : [])].filter((person) => person.description);
+  const updated = publication && dayOf(publication.updatedAt) !== dayOf(publication.publishedAt);
   return (
     <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "BlogPosting",
-          headline: article.title,
-          description: article.search.description ?? article.summary,
-          datePublished: article.published,
-          dateModified: article.updated,
-          author: article.authors.map(schemaPerson),
-          publisher: { "@type": "Person", "@id": PERSON_ID, name: SITE.name },
-          mainEntityOfPage: url,
-          url,
-          inLanguage: SITE.language,
-          ...(article.cover ? { image: absoluteUrl(article.cover.src) } : {}),
-          ...(category ? { articleSection: category } : {}),
-          ...(article.tags.length ? { keywords: article.tags.join(", ") } : {}),
-        }}
-      />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-            { "@type": "ListItem", position: 2, name: "Blog", item: absoluteUrl("/blog") },
-            { "@type": "ListItem", position: 3, name: article.title, item: url },
-          ],
-        }}
-      />
-      {article.faq.length ? (
-        <JsonLd
-          data={{
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: article.faq.map((entry) => ({
-              "@type": "Question",
-              name: entry.question,
-              acceptedAnswer: { "@type": "Answer", text: entry.answer },
-            })),
-          }}
-        />
+      {structuredData && publication ? (
+        <>
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "BlogPosting",
+              headline: payload.title,
+              description: searchFields(payload).description,
+              datePublished: publication.publishedAt,
+              dateModified: publication.updatedAt,
+              author: authors.map(schemaPerson),
+              publisher: { "@type": "Person", "@id": PERSON_ID, name: SITE.name },
+              mainEntityOfPage: url,
+              url,
+              inLanguage: SITE.language,
+              image: hero ? hero.url : absoluteUrl("/opengraph-image"),
+              ...(category ? { articleSection: category } : {}),
+              ...(tags.length ? { keywords: tags.join(", ") } : {}),
+              ...(outline.sources.entries.length ? { citation: outline.sources.entries.map((entry) => entry.url) } : {}),
+            }}
+          />
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+                { "@type": "ListItem", position: 2, name: "Blog", item: absoluteUrl("/blog") },
+                { "@type": "ListItem", position: 3, name: payload.title, item: url },
+              ],
+            }}
+          />
+          {faq.length ? (
+            <JsonLd
+              data={{
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: faq.map((entry) => ({
+                  "@type": "Question",
+                  name: entry.question,
+                  acceptedAnswer: { "@type": "Answer", text: plain(entry.answerMarkdown) },
+                })),
+              }}
+            />
+          ) : null}
+        </>
       ) : null}
 
       <nav className="crumbs" aria-label="Breadcrumb">
@@ -112,44 +155,49 @@ export function ArticlePage({ article }: { article: Article }) {
           <li>
             <Link href="/blog">Blog</Link>
           </li>
-          <li aria-current="page">{article.title}</li>
+          <li aria-current="page">{payload.title}</li>
         </ol>
       </nav>
 
       <article className="article">
         <header>
+          {status}
           <p className="kicker">
             {category ? <span className="chip">{category}</span> : null}
-            <span>{article.readingMinutes} min read</span>
+            <span>{readingMinutes(payload)} min read</span>
           </p>
-          <h1>{article.title}</h1>
-          <p className="deck">{article.summary}</p>
+          <h1>{payload.title}</h1>
+          <p className="deck">{payload.summary}</p>
           <div className="byline">
             <p>
-              By {joined(article.authors)}
-              {article.reviewer ? (
+              By {joined(authors)}
+              {reviewer ? (
                 <>
                   {" "}
-                  · reviewed by <Name person={article.reviewer} />
+                  · reviewed by <Name person={reviewer} />
                 </>
               ) : null}
             </p>
-            <p>
-              Published <DateText iso={article.published} />
-              {article.updated !== article.published ? (
-                <>
-                  {" "}
-                  · Updated <DateText iso={article.updated} />
-                </>
-              ) : null}
-            </p>
-            {article.verification ? (
-              <a className="pill" href="#how-this-was-checked">
-                {article.verification.mode === "first_hand" ? "Tested first-hand" : "Based on documentation"}
-                {article.verification.lastVerified ? (
+            {publication ? (
+              <p>
+                Published <DateText iso={publication.publishedAt} />
+                {updated ? (
                   <>
                     {" "}
-                    · <DateText iso={article.verification.lastVerified} />
+                    · Updated <DateText iso={publication.updatedAt} />
+                  </>
+                ) : null}
+              </p>
+            ) : (
+              <p>Preview · not published</p>
+            )}
+            {verification && verification.mode !== "not_applicable" ? (
+              <a className="pill" href="#how-this-was-checked">
+                {VERIFICATION_MODES[verification.mode]}
+                {verification.lastVerifiedAt ? (
+                  <>
+                    {" "}
+                    · <DateText iso={verification.lastVerifiedAt} />
                   </>
                 ) : null}
               </a>
@@ -157,80 +205,30 @@ export function ArticlePage({ article }: { article: Article }) {
           </div>
         </header>
 
-        {article.cover ? (
-          <figure className="cover">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={article.cover.src}
-              alt={article.cover.alt}
-              width={article.cover.width}
-              height={article.cover.height}
-              fetchPriority="high"
-            />
-            {article.cover.caption || article.cover.credit ? (
-              <figcaption>
-                {article.cover.caption}
-                {article.cover.caption && article.cover.credit ? " · " : null}
-                {article.cover.credit}
-              </figcaption>
-            ) : null}
-          </figure>
-        ) : null}
-
-        {article.sections.length >= 3 ? (
-          <nav className="contents" aria-labelledby="contents-title">
-            <p id="contents-title">In this article</p>
-            <ol>
-              {article.sections.map((section) => (
-                <li key={section.id}>
-                  <a href={`#${section.id}`}>{section.heading}</a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        ) : null}
-
-        <div className="body">
-          <Body markdown={article.body} ids={ids} />
-        </div>
-
-        {article.faq.length ? (
-          <section className="faq" aria-labelledby="questions">
-            <h2 id="questions">Questions</h2>
-            {article.faq.map((entry) => (
-              <div key={entry.question}>
-                <h3>{entry.question}</h3>
-                <Body markdown={entry.answer} />
-              </div>
-            ))}
-          </section>
-        ) : null}
-
-        {article.verification?.note ? (
-          <section className="checked" aria-labelledby="how-this-was-checked">
-            <h2 id="how-this-was-checked">How this was checked</h2>
-            <Body markdown={article.verification.note} />
-          </section>
-        ) : null}
-
-        {article.sources.length ? (
-          <section className="sources" aria-labelledby="sources">
-            <h2 id="sources">Sources</h2>
-            <ol>
-              {article.sources.map((source) => (
-                <li key={source.url}>
-                  <a href={source.url}>{source.label}</a>
-                </li>
-              ))}
-            </ol>
-          </section>
-        ) : null}
+        <ArticleBody
+          payload={payload}
+          outline={outline}
+          contents={
+            outline.contents.length >= 3 ? (
+              <nav className="contents" aria-labelledby="contents-title">
+                <p id="contents-title">In this article</p>
+                <ol>
+                  {outline.contents.map((entry) => (
+                    <li key={entry.id}>
+                      <a href={`#${entry.id}`}>{entry.label}</a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            ) : null
+          }
+        />
 
         {described.length ? (
           <section className="people" aria-labelledby="about-the-authors">
             <h2 id="about-the-authors">{described.length === 1 ? "About the author" : "About the authors"}</h2>
-            {described.map((person) => (
-              <p key={person.name}>
+            {described.map((person, index) => (
+              <p key={`${index}:${person.name}`}>
                 <b>
                   <Name person={person} />
                 </b>{" "}
@@ -247,7 +245,7 @@ export function ArticlePage({ article }: { article: Article }) {
           <ul>
             {related.map((other) => (
               <li key={other.slug}>
-                <Link href={`/blog/${other.slug}`}>{other.title}</Link>
+                <Link href={articlePath(other.slug)}>{other.title}</Link>
                 <p>{other.summary}</p>
               </li>
             ))}
