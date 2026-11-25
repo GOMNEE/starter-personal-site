@@ -187,6 +187,13 @@ const missing = await fetch(`${base}/no-such-page-${port}`);
 if (missing.status !== 404) fail("/no-such-page", `answered ${missing.status}, not 404`);
 if (existsSync("app/llms.txt") && (await fetch(`${base}/llms.txt`)).status !== 200) fail("/llms.txt", "doesn't answer 200");
 
+// Gomnee reads .env.example the same way: an unmarked setting counts as required.
+for (const line of readFileSync(".env.example", "utf8").split(/\r?\n/)) {
+  const name = line.match(/^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=/)?.[1];
+  if (name && name !== "NODE_ENV" && !/#\s*(required|optional):[A-Za-z0-9_-]+/i.test(line))
+    warnings.push(`.env.example: mark ${name} "# required:core" or "# optional:core"; Gomnee treats it as required`);
+}
+
 if (SITE_URL === "https://example.com") warnings.push("lib/site.ts: replace example.com with your address");
 if (field("name") === "Your Name") warnings.push("lib/site.ts: replace Your Name");
 if (field("email").endsWith("@example.com")) warnings.push("lib/site.ts: replace the example email");

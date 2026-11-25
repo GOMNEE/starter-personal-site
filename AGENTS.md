@@ -37,8 +37,11 @@ own publishing API. Keep it that way.
 - **One service:** Postgres at `DATABASE_URL`. The schema is
   `db/schema.ts`; after changing it, run `pnpm db:generate` and commit the
   migration, which `pnpm build` applies. No worker, scheduled job or disk on
-  the host. Name every environment variable in `.env.example`; never commit
-  secrets.
+  the host. Name every environment variable in `.env.example`, on its own
+  line with its mark: `# required:core` when the site can't run without it,
+  `# optional:core` otherwise. Gomnee reads that file and asks the owner for
+  each required value before it deploys; an unmarked line counts as
+  required. Local values go in `.env.local`. Never commit secrets.
 - **No catch-all routes**, and no middleware that intercepts paths the site
   doesn't own.
 - **Before you hand over:** `pnpm test && pnpm build && pnpm check`. Tests

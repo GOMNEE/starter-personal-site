@@ -17,7 +17,7 @@ what search engines and AI agents look for, from the first commit.
    openssl rand -hex 32
    ```
 
-5. Put both in `.env.local` (see `.env.example`), then run it:
+5. Copy `.env.example` to `.env.local` and fill in both, then run it:
 
    ```sh
    pnpm install
@@ -64,15 +64,26 @@ Every request carries the key from step 4 as `Authorization: Bearer …`.
 
 ## Settings
 
-| Name | Needed | What it is |
+| Name | In `.env.example` | What it is |
 | --- | --- | --- |
-| `DATABASE_URL` | To receive Articles | Your Postgres connection string |
-| `GOMNEE_PUBLISHING_TOKEN` | To receive Articles | The key from step 4 |
-| `GOMNEE_PREVIEW_STAGING_ORIGINS` | No | Extra origins allowed to frame previews; leave empty unless Gomnee asks |
+| `DATABASE_URL` | `# required:core` | Your Postgres connection string |
+| `GOMNEE_PUBLISHING_TOKEN` | `# required:core` | The key from step 4 |
+| `GOMNEE_PREVIEW_STAGING_ORIGINS` | `# optional:core` | Extra origins allowed to frame previews; leave empty unless Gomnee asks |
 
-Without them the site still runs, with an empty blog, and `pnpm check` says
-publishing isn't configured. `pnpm build` applies the database migrations in
-`drizzle/` whenever `DATABASE_URL` is set.
+**On your computer,** the values live in `.env.local`, which Next.js loads and
+Git ignores.
+
+**On Gomnee,** nothing is copied from your computer. When you connect the
+repository, Gomnee reads `.env.example` and lists every line marked
+`# required:core` as a protected value it needs before it deploys. You enter
+those values once, in the site's Preview step; Gomnee keeps them protected and
+gives them to the site when it builds and runs. Lines marked
+`# optional:core` are never asked for, and a line without a mark counts as
+required, so mark every new setting you add.
+
+Without the two required values the site still runs, with an empty blog, and
+`pnpm check` says publishing isn't configured. `pnpm build` applies the
+database migrations in `drizzle/` whenever `DATABASE_URL` is set.
 
 ## What's inside
 
@@ -95,8 +106,8 @@ publishing isn't configured. `pnpm build` applies the database migrations in
 
 1. Connect this repository in Gomnee through its GitHub App, for this
    repository only. It reads your code and never changes it.
-2. Enter `DATABASE_URL` and `GOMNEE_PUBLISHING_TOKEN` in Gomnee's settings
-   for the site.
+2. Gomnee reads `.env.example` and asks for `DATABASE_URL` and
+   `GOMNEE_PUBLISHING_TOKEN` in the Preview step. Enter them there.
 3. Preview an exact commit, and publish it when you're ready.
 4. Point your domain at it with the DNS records Gomnee gives you.
 5. Connect Search Console, read-only, and submit your sitemap.
